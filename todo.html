@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lịch Công Việc Đồng Bộ - Firebase</title>
+<style>
+  /* ===== GIỮ NGUYÊN TOÀN BỘ CSS CỦA BẠN ===== */
+  :root {
+    --bg: #0a0a0a;
+    --bg2: #141414;
+    --bg3: #1c1c1c;
+    --border: #2a2a2a;
+    --silver: #c8c8c8;
+    --silver-dim: #8a8a8a;
+    --text: #e8e8e8;
+    --text-dim: #9a9a9a;
+    --accent: linear-gradient(135deg, #f0f0f0, #a8a8a8, #d8d8d8);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    background-image:
+      radial-gradient(circle at 20% 30%, rgba(255,255,255,0.03) 0%, transparent 40%),
+      radial-gradient(circle at 80% 70%, rgba(255,255,255,0.02) 0%, transparent 40%),
+      repeating-linear-gradient(45deg, rgba(255,255,255,0.008) 0px, rgba(255,255,255,0.008) 1px, transparent 1px, transparent 3px);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 24px;
+  }
+
+  .container { max-width: 1200px; margin: 0 auto; }
+
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  h1 {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    background: var(--accent);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 2px 10px rgba(200,200,200,0.15);
+  }
+
+  .stats { display: flex; gap: 12px; }
+
+  .stat-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 18px;
+    text-align: center;
+    min-width: 80px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 4px 12px rgba(0,0,0,0.4);
+  }
+
+  .stat-card .num { font-size: 22px; font-weight: 700; color: var(--silver); }
+  .stat-card .label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 20px;
+    align-items: start;
+  }
+
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+  }
+
+  .panel {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 8px 24px rgba(0,0,0,0.5);
+  }
+
+  .cal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+
+  .cal-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--silver);
+    letter-spacing: 1px;
+  }
+
+  .cal-nav { display: flex; gap: 8px; }
+
+  button {
+    background: var(--bg3);
+    color: var(--silver);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 14px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+  }
+
+  button:hover {
+    border-color: var(--silver-dim);
+    background: linear-gradient(180deg, #262626, #1a1a1a);
+    color: #fff;
+    box-shadow: 0 0 12px rgba(200,200,200,0.15);
+  }
+
+  .weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+
+  .weekday {
+    text-align: center;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+    padding: 6px 0;
+  }
+
+  .days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+  }
+
+  .day {
+    aspect-ratio: 1;
+    min-height: 60px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .day:hover {
+    border-color: var(--silver-dim);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5), 0 0 10px rgba(200,200,200,0.1);
+  }
+
+  .day.empty { background: transparent; border-color: transparent; cursor: default; }
+  .day.empty:hover { transform: none; box-shadow: none; }
+
+  .day .d-num { font-size: 14px; font-weight: 600; color: var(--text); }
+  .day.today { border-color: var(--silver); box-shadow: 0 0 0 1px var(--silver), 0 0 14px rgba(200,200,200,0.2); }
+  .day.today .d-num {
+    background: var(--accent);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: 800;
+  }
+  .day.selected { background: #222; border-color: var(--silver); }
+
+  .day .dots { display: flex; gap: 3px; margin-top: auto; flex-wrap: wrap; }
+  .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--silver);
+    box-shadow: 0 0 6px rgba(200,200,200,0.5);
+  }
+  .dot.done { background: #5a8a6a; box-shadow: 0 0 6px rgba(90,138,106,0.5); }
+
+  .task-panel h2 {
+    font-size: 16px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--silver);
+    margin-bottom: 4px;
+  }
+
+  .task-date { font-size: 13px; color: var(--text-dim); margin-bottom: 16px; }
+
+  .add-form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 18px;
+  }
+
+  .add-form input, .add-form select {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: var(--text);
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .add-form input:focus, .add-form select:focus { border-color: var(--silver-dim); }
+  .add-form select option { background: var(--bg2); }
+
+  .btn-add {
+    background: linear-gradient(180deg, #e8e8e8, #b0b0b0);
+    color: #111;
+    font-weight: 700;
+    border: none;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    font-size: 13px;
+  }
+  .btn-add:hover { background: linear-gradient(180deg, #fff, #c8c8c8); color: #000; }
+
+  .task-list { display: flex; flex-direction: column; gap: 8px; max-height: 420px; overflow-y: auto; padding-right: 4px; }
+
+  .task-list::-webkit-scrollbar { width: 6px; }
+  .task-list::-webkit-scrollbar-track { background: var(--bg3); border-radius: 3px; }
+  .task-list::-webkit-scrollbar-thumb { background: var(--silver-dim); border-radius: 3px; }
+
+  .task {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    animation: slideIn 0.25s ease;
+    transition: border-color 0.2s;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(-8px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  .task:hover { border-color: var(--silver-dim); }
+
+  .task input[type="checkbox"] {
+    appearance: none;
+    width: 20px; height: 20px;
+    border: 2px solid var(--silver-dim);
+    border-radius: 6px;
+    cursor: pointer;
+    flex-shrink: 0;
+    position: relative;
+    transition: all 0.2s;
+  }
+
+  .task input[type="checkbox"]:checked {
+    background: linear-gradient(135deg, #e0e0e0, #a0a0a0);
+    border-color: var(--silver);
+  }
+
+  .task input[type="checkbox"]:checked::after {
+    content: '✓';
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 900;
+    color: #111;
+  }
+
+  .task-info { flex: 1; min-width: 0; }
+  .task-title { font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .task.done .task-title { text-decoration: line-through; color: var(--text-dim); }
+
+  .task-meta { display: flex; gap: 8px; margin-top: 3px; align-items: center; }
+  .task-time { font-size: 11px; color: var(--silver-dim); }
+  .task-priority {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    border: 1px solid;
+    letter-spacing: 0.5px;
+  }
+  .p-high { color: #d08080; border-color: #6a3030; background: rgba(100,30,30,0.2); }
+  .p-medium { color: #d0b080; border-color: #6a5a30; background: rgba(100,80,30,0.2); }
+  .p-low { color: #80a890; border-color: #305040; background: rgba(30,60,40,0.2); }
+
+  .btn-del {
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    font-size: 16px;
+    padding: 4px 8px;
+    border-radius: 6px;
+  }
+  .btn-del:hover { color: #d06060; background: rgba(100,30,30,0.2); box-shadow: none; }
+
+  .empty-tasks { text-align: center; color: var(--text-dim); font-size: 13px; padding: 24px 0; font-style: italic; }
+
+  .loading {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    padding: 12px 20px;
+    border-radius: 10px;
+    color: var(--silver);
+    font-size: 14px;
+    z-index: 9999;
+    display: none;
+    animation: slideIn 0.3s ease;
+  }
+
+  .loading.show { display: block; }
+
+  .user-id {
+    font-size: 11px;
+    color: var(--text-dim);
+    background: var(--bg3);
+    padding: 6px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+  }
+
+  .online-status {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-left: 8px;
+  }
+  .online-status.online { background: #4caf50; box-shadow: 0 0 10px #4caf50; }
+  .online-status.offline { background: #f44336; box-shadow: 0 0 10px #f44336; }
+
+  footer { text-align: center; margin-top: 24px; font-size: 12px; color: #555; letter-spacing: 1px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>⚒ Lịch Công Việc</h1>
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+      <span class="user-id" id="userIdDisplay">👤 Đang tải...</span>
+      <span class="online-status online" id="onlineStatus"></span>
+      <button onclick="regenerateUserId()" style="padding:4px 12px;font-size:12px;">🔄 Đổi ID</button>
+    </div>
+    <div class="stats">
+      <div class="stat-card"><div class="num" id="statTotal">0</div><div class="label">Tổng</div></div>
+      <div class="stat-card"><div class="num" id="statDone">0</div><div class="label">Hoàn thành</div></div>
+      <div class="stat-card"><div class="num" id="statPending">0</div><div class="label">Còn lại</div></div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <div class="panel">
+      <div class="cal-header">
+        <div class="cal-title" id="calTitle"></div>
+        <div class="cal-nav">
+          <button onclick="changeMonth(-1)">‹ Trước</button>
+          <button onclick="goToday()">Hôm nay</button>
+          <button onclick="changeMonth(1)">Sau ›</button>
+        </div>
+      </div>
+      <div class="weekdays">
+        <div class="weekday">Hai</div><div class="weekday">Ba</div><div class="weekday">Tư</div>
+        <div class="weekday">Năm</div><div class="weekday">Sáu</div><div class="weekday">Bảy</div><div class="weekday">CN</div>
+      </div>
+      <div class="days" id="daysGrid"></div>
+    </div>
+
+    <div class="panel task-panel">
+      <h2>Công việc</h2>
+      <div class="task-date" id="taskDate"></div>
+
+      <div class="add-form">
+        <input type="text" id="taskInput" placeholder="Tên công việc..." onkeydown="if(event.key==='Enter')addTask()">
+        <div style="display:flex;gap:8px;">
+          <input type="time" id="taskTime" style="flex:1;">
+          <select id="taskPriority" style="flex:1;">
+            <option value="low">Thấp</option>
+            <option value="medium" selected>Vừa</option>
+            <option value="high">Cao</option>
+          </select>
+        </div>
+        <button class="btn-add" onclick="addTask()">+ Thêm công việc</button>
+        <button onclick="syncTasks()" style="background:var(--bg3);color:var(--silver);padding:8px;font-size:12px;">🔄 Đồng bộ</button>
+      </div>
+
+      <div class="task-list" id="taskList"></div>
+    </div>
+  </div>
+
+  <footer>Dữ liệu được đồng bộ qua Firebase Realtime Database 🚀</footer>
+</div>
+
+<!-- Loading notification -->
+<div class="loading" id="loading">⏳ Đang đồng bộ...</div>
+
+<!-- ===== FIREBASE SDK ===== -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
+<script>
+  // ═══════════════════════════════════════════════════════
+  // 🔑 BẠN CẦN THAY THẾ BẰNG CONFIG CỦA MÌNH
+  // ═══════════════════════════════════════════════════════
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT.firebaseapp.com",
+    databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+    projectId: "YOUR_PROJECT",
+    storageBucket: "YOUR_PROJECT.appspot.com",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID"
+  };
+  // ═══════════════════════════════════════════════════════
+
+  // Khởi tạo Firebase
+  firebase.initializeApp(firebaseConfig);
+  const database = firebase.database();
+
+  // ===== Quản lý User ID =====
+  function getUserId() {
+    let id = localStorage.getItem('todoUserId');
+    if (!id) {
+      id = 'user_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+      localStorage.setItem('todoUserId', id);
+    }
+    return id;
+  }
+
+  function regenerateUserId() {
+    if (confirm('Đổi ID sẽ mất quyền truy cập dữ liệu cũ. Bạn có chắc?')) {
+      localStorage.removeItem('todoUserId');
+      // Ngắt listener cũ
+      if (window.taskListener) {
+        window.taskListener.off();
+        window.taskListener = null;
+      }
+      location.reload();
+    }
+  }
+
+  const USER_ID = getUserId();
+  document.getElementById('userIdDisplay').textContent = '👤 ' + USER_ID.slice(0, 12) + '...';
+
+  // ===== Dữ liệu =====
+  let currentDate = new Date();
+  let selectedDate = toKey(new Date());
+  let tasks = {};
+  let isSyncing = false;
+
+  function toKey(d) {
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+
+  function showLoading(show = true) {
+    document.getElementById('loading').classList.toggle('show', show);
+  }
+
+  function updateOnlineStatus(online) {
+    const status = document.getElementById('onlineStatus');
+    status.className = 'online-status ' + (online ? 'online' : 'offline');
+    status.title = online ? 'Đã kết nối Firebase' : 'Đang offline';
+  }
+
+  // ===== Lắng nghe thay đổi realtime =====
+  function listenTasks() {
+    if (window.taskListener) {
+      window.taskListener.off();
+    }
+
+    const userRef = database.ref('users/' + USER_ID);
+    
+    window.taskListener = userRef.on('value', (snapshot) => {
+      const data = snapshot.val();
+      updateOnlineStatus(true);
+      
+      if (data) {
+        // Chuyển đổi dữ liệu từ Firebase sang format tasks
+        const newTasks = {};
+        Object.keys(data).forEach(dateKey => {
+          const taskList = data[dateKey];
+          if (Array.isArray(taskList)) {
+            newTasks[dateKey] = taskList;
+          }
+        });
+        tasks = newTasks;
+      } else {
+        tasks = {};
+      }
+      
+      // Lưu cache
+      localStorage.setItem('todoTasksCache', JSON.stringify(tasks));
+      render();
+    }, (error) => {
+      console.error('Firebase listen error:', error);
+      updateOnlineStatus(false);
+      // Vẫn hiển thị dữ liệu cache nếu có
+      if (Object.keys(tasks).length === 0) {
+        const cached = localStorage.getItem('todoTasksCache');
+        if (cached) {
+          tasks = JSON.parse(cached);
+          render();
+        }
+      }
+    });
+  }
+
+  // ===== Các hàm chính =====
+  function getTasks(key) { return tasks[key] || []; }
+
+  function fmtDate(key) {
+    const [y,m,d] = key.split('-').map(Number);
+    const days = ['Chủ nhật','Thứ hai','Thứ ba','Thứ tư','Thứ năm','Thứ sáu','Thứ bảy'];
+    const dt = new Date(y, m-1, d);
+    return days[dt.getDay()] + ', ' + d + '/' + m + '/' + y;
+  }
+
+  function render() {
+    renderCalendar();
+    renderTasks();
+    renderStats();
+  }
+
+  function renderCalendar() {
+    const y = currentDate.getFullYear(), m = currentDate.getMonth();
+    document.getElementById('calTitle').textContent = MONTHS[m] + ' ' + y;
+
+    const first = new Date(y, m, 1);
+    let startDay = first.getDay() - 1;
+    if (startDay < 0) startDay = 6;
+
+    const daysInMonth = new Date(y, m+1, 0).getDate();
+    const todayKey = toKey(new Date());
+    const grid = document.getElementById('daysGrid');
+    grid.innerHTML = '';
+
+    for (let i = 0; i < startDay; i++) {
+      grid.insertAdjacentHTML('beforeend', '<div class="day empty"></div>');
+    }
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const key = y + '-' + String(m+1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+      const dayTasks = getTasks(key);
+      const dots = dayTasks.slice(0, 5).map(t =>
+        '<div class="dot' + (t.done ? ' done' : '') + '"></div>').join('');
+      const cls = 'day' + (key === todayKey ? ' today' : '') + (key === selectedDate ? ' selected' : '');
+      grid.insertAdjacentHTML('beforeend',
+        '<div class="' + cls + '" onclick="selectDate(\'' + key + '\')">' +
+        '<div class="d-num">' + d + '</div>' +
+        '<div class="dots">' + dots + '</div></div>');
+    }
+  }
+
+  function renderTasks() {
+    document.getElementById('taskDate').textContent = fmtDate(selectedDate);
+    const list = document.getElementById('taskList');
+    const dayTasks = getTasks(selectedDate);
+
+    if (dayTasks.length === 0) {
+      list.innerHTML = '<div class="empty-tasks">Không có công việc nào cho ngày này</div>';
+      return;
+    }
+
+    list.innerHTML = dayTasks.map((t, i) =>
+      '<div class="task' + (t.done ? ' done' : '') + '">' +
+      '<input type="checkbox"' + (t.done ? ' checked' : '') + ' onchange="toggleTask(' + i + ')">' +
+      '<div class="task-info">' +
+      '<div class="task-title">' + esc(t.title) + '</div>' +
+      '<div class="task-meta">' +
+      (t.time ? '<span class="task-time">🕐 ' + t.time + '</span>' : '') +
+      '<span class="task-priority p-' + t.priority + '">' + PRIORITIES[t.priority] + '</span>' +
+      '</div></div>' +
+      '<button class="btn-del" onclick="deleteTask(' + i + ')" title="Xóa">✕</button>' +
+      '</div>').join('');
+  }
+
+  function renderStats() {
+    let total = 0, done = 0;
+    Object.values(tasks).forEach(arr => {
+      total += arr.length;
+      done += arr.filter(t => t.done).length;
+    });
+    document.getElementById('statTotal').textContent = total;
+    document.getElementById('statDone').textContent = done;
+    document.getElementById('statPending').textContent = total - done;
+  }
+
+  function esc(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function selectDate(key) { selectedDate = key; render(); }
+
+  function changeMonth(delta) {
+    currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + delta, 1);
+    render();
+  }
+
+  function goToday() {
+    currentDate = new Date();
+    selectedDate = toKey(new Date());
+    render();
+  }
+
+  // ===== Thêm task (sync realtime) =====
+  async function addTask() {
+    const input = document.getElementById('taskInput');
+    const title = input.value.trim();
+    if (!title) return;
+
+    const time = document.getElementById('taskTime').value;
+    const priority = document.getElementById('taskPriority').value;
+
+    try {
+      showLoading(true);
+      
+      const newTask = { 
+        title, 
+        time: time || '', 
+        priority: priority || 'medium', 
+        done: false,
+        created_at: Date.now()
+      };
+
+      // Lấy danh sách hiện tại
+      const currentTasks = tasks[selectedDate] || [];
+      currentTasks.push(newTask);
+      
+      // Lưu lên Firebase
+      const userRef = database.ref('users/' + USER_ID + '/' + selectedDate);
+      await userRef.set(currentTasks);
+      
+      // Cập nhật local
+      tasks[selectedDate] = currentTasks;
+      localStorage.setItem('todoTasksCache', JSON.stringify(tasks));
+      
+      input.value = '';
+      document.getElementById('taskTime').value = '';
+      render();
+    } catch (err) {
+      console.error('Add task error:', err);
+      alert('Lỗi thêm công việc: ' + err.message);
+    }
+    showLoading(false);
+  }
+
+  // ===== Toggle task =====
+  async function toggleTask(i) {
+    const taskList = tasks[selectedDate];
+    if (!taskList || !taskList[i]) return;
+
+    try {
+      showLoading(true);
+      taskList[i].done = !taskList[i].done;
+      
+      const userRef = database.ref('users/' + USER_ID + '/' + selectedDate);
+      await userRef.set(taskList);
+      
+      localStorage.setItem('todoTasksCache', JSON.stringify(tasks));
+      render();
+    } catch (err) {
+      console.error('Toggle error:', err);
+      alert('Lỗi cập nhật: ' + err.message);
+    }
+    showLoading(false);
+  }
+
+  // ===== Delete task =====
+  async function deleteTask(i) {
+    const taskList = tasks[selectedDate];
+    if (!taskList || !taskList[i]) return;
+
+    if (!confirm('Xóa công việc này?')) return;
+
+    try {
+      showLoading(true);
+      taskList.splice(i, 1);
+      
+      const userRef = database.ref('users/' + USER_ID + '/' + selectedDate);
+      if (taskList.length === 0) {
+        await userRef.remove();
+        delete tasks[selectedDate];
+      } else {
+        await userRef.set(taskList);
+      }
+      
+      localStorage.setItem('todoTasksCache', JSON.stringify(tasks));
+      render();
+    } catch (err) {
+      console.error('Delete error:', err);
+      alert('Lỗi xóa: ' + err.message);
+    }
+    showLoading(false);
+  }
+
+  // ===== Sync thủ công =====
+  async function syncTasks() {
+    showLoading(true);
+    try {
+      const snapshot = await database.ref('users/' + USER_ID).once('value');
+      const data = snapshot.val();
+      
+      if (data) {
+        const newTasks = {};
+        Object.keys(data).forEach(dateKey => {
+          const taskList = data[dateKey];
+          if (Array.isArray(taskList)) {
+            newTasks[dateKey] = taskList;
+          }
+        });
+        tasks = newTasks;
+      } else {
+        tasks = {};
+      }
+      
+      localStorage.setItem('todoTasksCache', JSON.stringify(tasks));
+      render();
+    } catch (err) {
+      console.error('Sync error:', err);
+      alert('Lỗi đồng bộ: ' + err.message);
+    }
+    showLoading(false);
+  }
+
+  // ===== Khởi tạo =====
+  const MONTHS = ['Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6','Tháng 7','Tháng 8','Tháng 9','Tháng 10','Tháng 11','Tháng 12'];
+  const PRIORITIES = { high: 'Cao', medium: 'Vừa', low: 'Thấp' };
+
+  // Load cache trước
+  const cached = localStorage.getItem('todoTasksCache');
+  if (cached) {
+    tasks = JSON.parse(cached);
+  }
+  render();
+
+  // Bắt đầu lắng nghe realtime
+  listenTasks();
+
+  // Kiểm tra kết nối
+  const connectedRef = database.ref('.info/connected');
+  connectedRef.on('value', (snap) => {
+    updateOnlineStatus(snap.val() === true);
+  });
+
+  console.log('🔥 Firebase Todo Calendar ready! User ID:', USER_ID);
+</script>
+</body>
+</html>
